@@ -1,6 +1,7 @@
 import itertools as it
 from Bio import SeqIO
 import numpy as np
+import sys
 
 def parse_seq(subseq,MODE,output=None,idx=None):
 	for seq in SeqIO.parse(fasta,'fasta'):
@@ -93,9 +94,9 @@ class seqroots:
 				print "working on", N
 				start = timer()
 				if self.nthreads == 1:
-					n.append(float(sum([parse_seq(''.join(subseq),self.MODE) for subseq in it.combinations(aa,N)]))/(len(aa)**N))
+					n.append(float(sum([parse_seq(''.join(subseq),self.MODE) for subseq in it.combinations_with_replacement(aa,N)]))/(len(aa)**N))
 				elif self.nthreads > 1:
-					n.append(float(sum(Parallel(n_jobs=self.nthreads)(delayed(parse_seq)(''.join(subseq),self.MODE) for subseq in it.combinations(aa,N))))/(len(aa)**N))
+					n.append(float(sum(Parallel(n_jobs=self.nthreads)(delayed(parse_seq)(''.join(subseq),self.MODE) for subseq in it.combinations_with_replacement(aa,N))))/(len(aa)**N))
 				end = timer()
 				t.append(end-start)
 				print N, n[-1], end-start
@@ -112,7 +113,7 @@ class seqroots:
                                 pass
 			output_filename_memmap = os.path.join(folder, 'output_memmap')
 			output = np.memmap(output_filename_memmap, mode='w+',shape=(int(20**N),),dtype="S"+str(N))
-			outname = 'N'+str(N)+'.npy'
+			outname = fasta + '_N'+str(N)+'.npy'
 			if os.path.exists(outname):
 				overwrite = raw_input("'"+outname+"' exists. Overwrite? [y/n] ")
 				if overwrite == 'n': 
@@ -120,9 +121,9 @@ class seqroots:
 					exit()
 			print "working..."
 			if self.nthreads > 1:
-				Parallel(n_jobs=self.nthreads)(delayed(parse_seq)(''.join(subseq),self.MODE,output,idx) for idx,subseq in enumerate(it.combinations(aa,N)))
+                                Parallel(n_jobs=self.nthreads)(delayed(parse_seq)(''.join(subseq),self.MODE,output,idx) for idx,subseq in enumerate(it.product(aa,repeat=N)))
 			else:
-				[parse_seq(''.join(subseq),self.MODE,output,idx) for idx,subseq in enumerate(it.combinations(aa,N))]
+				[parse_seq(''.join(subseq),self.MODE,output,idx) for idx,subseq in enumerate(it.product(aa,repeat=N))]
 			try:
 				shutil.rmtree(folder)
 			except:
@@ -130,6 +131,6 @@ class seqroots:
 			self.save_memmap_readable(N,output,outname)
 
 if __name__ == "__main__":
-	fasta = "/home/dillion/Dropbox/james_project/uniprot_sprot.fasta"
-	s = seqroots(fasta, nthreads=2, MODE='save', min_subseq_len = 2, max_subseq_len = 3)
+	fasta = sys.argv[1]
+	s = seqroots(fasta, nthreads=2, MODE='save', min_subseq_len = int(sys.argv[2]), max_subseq_len = int(sys.argv[3]))
 	s.run()
