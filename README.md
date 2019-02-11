@@ -13,4 +13,7 @@ Dependencies:
 	- joblib
 	- timeit
 	- matplotlib
+	(for analysis)
+	- pandas
+	- seaborn
 
